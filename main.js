@@ -239,16 +239,48 @@ const themeBtn = document.getElementById("theme");
 /* ================= STATE ================= */
 let step = 0;
 let yesScale = 1;
+let noScale = 1;
+let noOpacity = 1;
 let heartsStarted = false;
+let musicUnlocked = false;
 
 /* ================= MUSIC ================= */
 function updateMusicIcon() {
   musicBtn.innerText = music.paused ? "🔊" : "🔈";
 }
-function playMusic() { music.play().catch(()=>{}); updateMusicIcon(); }
-function pauseMusic() { music.pause(); updateMusicIcon(); }
 
-musicBtn.addEventListener("click", () => {
+function playMusic() {
+  music.play().catch(() => {});
+  updateMusicIcon();
+}
+
+function pauseMusic() {
+  music.pause();
+  updateMusicIcon();
+}
+
+// Autoplay muted
+window.addEventListener("load", () => {
+  music.muted = true;
+  playMusic();
+});
+
+// Unlock sound on first interaction
+function unlockMusic() {
+  if (musicUnlocked) return;
+  music.muted = false;
+  playMusic();
+  musicUnlocked = true;
+
+  document.removeEventListener("click", unlockMusic);
+  document.removeEventListener("touchstart", unlockMusic);
+}
+
+document.addEventListener("click", unlockMusic);
+document.addEventListener("touchstart", unlockMusic);
+
+musicBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
   music.paused ? playMusic() : pauseMusic();
 });
 
@@ -258,7 +290,7 @@ function screenShake() {
   setTimeout(() => document.body.classList.remove("shake"), 400);
 }
 
-/* ================= NO BUTTON ESCAPE (FAIR) ================= */
+/* ================= NO ESCAPE ================= */
 function moveNoButton(e) {
   const rect = noBtn.getBoundingClientRect();
   const mouseX = e.clientX || (e.touches && e.touches[0].clientX);
@@ -271,13 +303,9 @@ function moveNoButton(e) {
   const dy = btnY - mouseY;
   const distance = Math.sqrt(dx * dx + dy * dy);
 
-  // Only dodge if cursor is near
   if (distance < 120) {
-    const speed = 60; // slower & fair
-    const moveX = (dx / distance) * speed;
-    const moveY = (dy / distance) * speed;
-
-    noBtn.style.transform = `translate(${moveX}px, ${moveY}px)`;
+    const speed = 60;
+    noBtn.style.transform = `translate(${(dx / distance) * speed}px, ${(dy / distance) * speed}px) scale(${noScale})`;
   }
 }
 
@@ -285,7 +313,7 @@ noBtn.addEventListener("mouseenter", moveNoButton);
 noBtn.addEventListener("mousemove", moveNoButton);
 noBtn.addEventListener("touchstart", moveNoButton);
 
-/* ================= DIALOGUE STEPS ================= */
+/* ================= DIALOGUE ================= */
 const stepsData = [
   { text: "Soch lo 🤔", image: "assets/think.gif" },
   { text: "Ek baar aur soch lo 😢", image: "assets/sadface.gif" },
@@ -315,15 +343,34 @@ noBtn.addEventListener("click", () => {
     text.innerText = stepsData[step].text;
     img.style.backgroundImage = `url(${stepsData[step].image})`;
     step++;
-  } else {
-    acceptLove();
   }
 
-  yesScale += 0.15;
-  yesBtn.style.transform = `scale(${yesScale})`;
+  // YES grows & moves down
+  yesScale += 0.18;
+  const translateY = (yesScale - 1) * 30;
+  yesBtn.style.transform = `scale(${yesScale}) translateY(${translateY}px)`;
+
+  // NO shrinks & fades
+  noScale -= 0.07;
+  noOpacity -= 0.08;
+
+  noScale = Math.max(noScale, 0.4);
+  noOpacity = Math.max(noOpacity, 0);
+
+  noBtn.style.transform = `scale(${noScale})`;
+  noBtn.style.opacity = noOpacity;
+
+  if (noOpacity <= 0.15) {
+    noBtn.style.pointerEvents = "none";
+  }
+
+  // Auto accept
+  if (yesScale >= 2.6) {
+    acceptLove();
+  }
 });
 
-/* ================= YES BUTTON ================= */
+/* ================= YES ================= */
 yesBtn.addEventListener("click", acceptLove);
 
 function acceptLove() {
@@ -352,7 +399,7 @@ function startHearts() {
   }, 300);
 }
 
-/* ================= GIFT & POPUP ================= */
+/* ================= GIFT ================= */
 giftBtn.addEventListener("click", () => cover.style.display = "flex");
 
 cover.addEventListener("click", () => {
@@ -362,7 +409,7 @@ cover.addEventListener("click", () => {
 
 closePopup.addEventListener("click", () => {
   popup.style.display = "none";
-  awwSound.play().catch(()=>{});
+  awwSound.play().catch(() => {});
 });
 
 /* ================= SCREENSHOT ================= */
@@ -382,4 +429,3 @@ themeBtn.addEventListener("click", () => {
   card.style.boxShadow = `0 0 70px ${themes[themeIndex]}`;
   themeIndex = (themeIndex + 1) % themes.length;
 });
-
